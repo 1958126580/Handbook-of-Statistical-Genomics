@@ -1,0 +1,206 @@
+# ============================================================================
+# StatisticalGenomics.jl - Docker Compose Configuration
+# ============================================================================
+# Production-ready multi-container deployment with monitoring and storage
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # Main analysis service
+  statgen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: statgen/statisticalgenomics:latest
+    container_name: statgen-main
+    environment:
+      - JULIA_NUM_THREADS=auto
+      - STATGEN_DATA_DIR=/data
+      - STATGEN_OUTPUT_DIR=/output
+      - STATGEN_LOG_LEVEL=INFO
+    volumes:
+      - ./data:/data:ro
+      - ./output:/output
+      - ./config:/config:ro
+      - ./logs:/logs
+    networks:
+      - statgen-network
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 64G
+        reservations:
+          cpus: '4'
+          memory: 8G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "julia", "--project=.", "-e", "using StatisticalGenomics"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # Worker service for distributed computing
+  statgen-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: statgen/statisticalgenomics:latest
+    environment:
+      - JULIA_NUM_THREADS=auto
+      - STATGEN_WORKER_MODE=true
+      - STATGEN_MASTER_HOST=statgen
+    volumes:
+      - ./data:/data:ro
+      - ./output:/output
+      - ./logs:/logs
+    networks:
+      - statgen-network
+    deploy:
+      mode: replicated
+      replicas: 4
+      resources:
+        limits:
+          cpus: '8'
+          memory: 32G
+    depends_on:
+      - statgen
+    restart: unless-stopped
+
+  # Jupyter notebook server for interactive analysis
+  notebook:
+    build:
+      context: .
+      dockerfile: Dockerfile.notebook
+    image: statgen/statisticalgenomics-notebook:latest
+    container_name: statgen-notebook
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=statgen_secure_token
+    volumes:
+      - ./notebooks:/home/jovyan/notebooks
+      - ./data:/home/jovyan/data:ro
+      - ./output:/home/jovyan/output
+    networks:
+      - statgen-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+    restart: unless-stopped
+
+  # Redis for job queue and caching
+  redis:
+    image: redis:7-alpine
+    container_name: statgen-redis
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - statgen-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL for result storage and metadata
+  postgres:
+    image: postgres:15-alpine
+    container_name: statgen-postgres
+    environment:
+      - POSTGRES_USER=statgen
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=statgen_results
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - statgen-network
+    secrets:
+      - db_password
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statgen -d statgen_results"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: statgen-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - statgen-network
+    secrets:
+      - grafana_password
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: statgen-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - statgen-network
+    restart: unless-stopped
+
+networks:
+  statgen-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  grafana-data:
+    driver: local
+  prometheus-data:
+    driver: local
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt

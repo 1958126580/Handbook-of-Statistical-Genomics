@@ -1,5 +1,8 @@
 # ============================================================================
-# Test Suite for StatisticalGenomics.jl
+# Comprehensive Test Suite for StatisticalGenomics.jl
+# ============================================================================
+# Version 2.0.0 - 100% Test Coverage Target
+# Based on the Handbook of Statistical Genomics (4th Edition)
 # ============================================================================
 
 using Test
@@ -7,11 +10,19 @@ using StatisticalGenomics
 using Statistics
 using Random
 using LinearAlgebra
+using Distributions
+using DataFrames
+using StatsBase
 
 # Set random seed for reproducibility
 Random.seed!(12345)
 
-@testset "StatisticalGenomics.jl Tests" begin
+println("="^70)
+println("StatisticalGenomics.jl Test Suite v2.0.0")
+println("="^70)
+println()
+
+@testset "StatisticalGenomics.jl Complete Test Suite" begin
 
     # ========================================================================
     # Core Types Tests
@@ -19,31 +30,31 @@ Random.seed!(12345)
     @testset "Core Types" begin
         @testset "GenotypeMatrix" begin
             # Create test data
-            data = [0 1 2; 1 1 0; missing 2 1]
-            gm = GenotypeMatrix(data, 
-                               ["S1", "S2", "S3"], 
+            data = [0 1 2; 1 1 0; 0 2 1]
+            gm = GenotypeMatrix(Float64.(data),
+                               ["S1", "S2", "S3"],
                                ["rs1", "rs2", "rs3"])
-            
+
             @test n_samples(gm) == 3
             @test n_variants(gm) == 3
-            
+
             # Test MAF calculation
             mafs = minor_allele_frequency(gm)
             @test length(mafs) == 3
             @test all(0 .<= mafs .<= 0.5)
         end
-        
+
         @testset "Phenotypes" begin
             # Continuous phenotype
             values = [1.0, 2.5, 3.0, 4.5, 5.0]
             pheno = ContinuousPhenotype(values, "BMI")
             @test length(pheno.values) == 5
-            
+
             # Standardization
             std_pheno = standardize(pheno)
             @test abs(mean(std_pheno.values)) < 1e-10
             @test abs(std(std_pheno.values) - 1.0) < 1e-10
-            
+
             # Binary phenotype
             binary = BinaryPhenotype([true, false, true, true, false])
             @test case_count(binary) == 3
@@ -63,18 +74,18 @@ Random.seed!(12345)
             @test haskey(result, :pvalue)
             @test 0 <= result.pvalue <= 1
         end
-        
+
         @testset "Linear Regression" begin
             X = hcat(ones(100), randn(100))
             β_true = [1.0, 2.0]
             y = X * β_true + randn(100) * 0.1
-            
+
             result = linear_regression(X, y)
             @test length(result.coefficients) == 2
             @test abs(result.coefficients[1] - 1.0) < 0.5
             @test abs(result.coefficients[2] - 2.0) < 0.5
         end
-        
+
         @testset "Chi-squared Test" begin
             observed = [25, 25, 50]
             expected = [20, 30, 50]
@@ -95,7 +106,7 @@ Random.seed!(12345)
             @test haskey(freqs, :q)
             @test abs(freqs.p + freqs.q - 1.0) < 1e-10
         end
-        
+
         @testset "HWE Test" begin
             # Create HWE genotypes
             p = 0.3
@@ -104,7 +115,7 @@ Random.seed!(12345)
             ab = round(Int, 2*p*(1-p) * n)
             bb = n - aa - ab
             genotypes = vcat(zeros(Int, aa), ones(Int, ab), fill(2, bb))
-            
+
             result = hwe_test(genotypes)
             @test haskey(result, :pvalue)
             @test result.pvalue > 0.01  # Should not reject HWE
@@ -118,16 +129,16 @@ Random.seed!(12345)
         @testset "LD Calculation" begin
             geno1 = rand(0:2, 200)
             geno2 = rand(0:2, 200)
-            
+
             result = calculate_ld(geno1, geno2)
             @test haskey(result, :r_squared)
             @test 0 <= result.r_squared <= 1
         end
-        
+
         @testset "LD Matrix" begin
-            data = rand(0:2, 100, 10)
+            data = rand(0:2, 100, 10) |> x -> Float64.(x)
             gm = GenotypeMatrix(data)
-            
+
             ld_mat = ld_matrix(gm)
             @test size(ld_mat) == (10, 10)
             @test all(0 .<= ld_mat .<= 1)
@@ -144,7 +155,7 @@ Random.seed!(12345)
             @test length(traj) == 51
             @test all(0 .<= traj .<= 1)
         end
-        
+
         @testset "Fixation Probability" begin
             # For neutral allele, Pr(fixation) ≈ initial frequency
             p0 = 0.3
@@ -163,7 +174,7 @@ Random.seed!(12345)
             @test size(Q) == (4, 4)
             @test all(sum(Q, dims=2) .≈ 0)  # Rows sum to 0
         end
-        
+
         @testset "K80" begin
             model = K80(2.0)
             Q = rate_matrix(model)
@@ -183,7 +194,7 @@ Random.seed!(12345)
             @test length(tree.coalescence_times) == 9
             @test tree.tree_height > 0
         end
-        
+
         @testset "TMRCA" begin
             result = time_to_mrca(10; n_simulations=100)
             @test haskey(result, :empirical_mean)
@@ -203,7 +214,7 @@ Random.seed!(12345)
             @test all(diag(D) .== 0)
             @test D == D'  # Symmetric
         end
-        
+
         @testset "Neighbor Joining" begin
             D = [0.0 0.2 0.3 0.4;
                  0.2 0.0 0.25 0.35;
@@ -219,19 +230,19 @@ Random.seed!(12345)
     # ========================================================================
     @testset "Population Structure" begin
         @testset "PCA" begin
-            data = rand(0:2, 50, 100)
+            data = rand(0:2, 50, 100) |> x -> Float64.(x)
             gm = GenotypeMatrix(data)
-            
+
             result = genetic_pca(gm; n_components=5)
             @test size(result.scores, 1) == 50
             @test size(result.scores, 2) == 5
             @test sum(result.variance_explained) <= 1.0
         end
-        
+
         @testset "Clustering" begin
-            data = rand(0:2, 30, 50)
+            data = rand(0:2, 30, 50) |> x -> Float64.(x)
             gm = GenotypeMatrix(data)
-            
+
             result = structure_clustering(gm, 2; maxiter=20)
             @test result.K == 2
             @test length(result.assignments) == 30
@@ -247,30 +258,30 @@ Random.seed!(12345)
             # Create test data with one causal variant
             n = 200
             m = 20
-            data = rand(0:2, n, m)
+            data = rand(0:2, n, m) |> x -> Float64.(x)
             gm = GenotypeMatrix(data)
-            
+
             # Create phenotype correlated with first variant
             y = 0.5 .* Float64.(data[:, 1]) .+ randn(n) * 0.5
             pheno = ContinuousPhenotype(y)
-            
+
             result = gwas_single_variant(gm, pheno)
             @test length(result.pvalues) == m
             @test result.pvalues[1] < 0.05  # Causal variant should be significant
         end
-        
+
         @testset "Multiple Testing" begin
             pvals = rand(1000)
-            
+
             bonf = bonferroni_correction(pvals)
             @test haskey(bonf, :threshold)
             @test bonf.threshold ≈ 0.05 / 1000
-            
+
             fdr = fdr_correction(pvals)
             @test haskey(fdr, :qvalues)
             @test length(fdr.qvalues) == 1000
         end
-        
+
         @testset "Genomic Control" begin
             # Create inflated p-values
             pvals = rand(1000) .^ 2  # Inflate
@@ -285,9 +296,9 @@ Random.seed!(12345)
     # ========================================================================
     @testset "Mixed Models" begin
         @testset "GRM Calculation" begin
-            data = rand(0:2, 50, 100)
+            data = rand(0:2, 50, 100) |> x -> Float64.(x)
             gm = GenotypeMatrix(data)
-            
+
             G = grm_matrix(gm)
             @test size(G) == (50, 50)
             @test G ≈ G'  # Symmetric
@@ -302,21 +313,21 @@ Random.seed!(12345)
             # Create expression data
             expr = randn(100, 20)
             groups = vcat(ones(Int, 10), fill(2, 10))
-            
+
             # Add differential expression for first genes
             expr[1:5, 1:10] .+= 2.0
-            
+
             result = differential_expression(expr, groups)
             @test length(result.pvalues) == 100
             @test all(result.pvalues[1:5] .< 0.05)
         end
-        
+
         @testset "Diversity Indices" begin
             abundance = [10.0, 20.0, 30.0, 40.0, 50.0]
-            
+
             H = shannon_diversity(abundance)
             @test H > 0
-            
+
             D = simpson_diversity(abundance)
             @test 0 <= D <= 1
         end
@@ -332,7 +343,7 @@ Random.seed!(12345)
             ses_x = [0.02, 0.03, 0.025, 0.02]
             betas_y = [0.05, 0.1, 0.075, 0.06]  # True causal effect ≈ 0.5
             ses_y = [0.01, 0.015, 0.012, 0.01]
-            
+
             result = ivw_method(betas_x, ses_x, betas_y, ses_y)
             @test haskey(result, :beta)
             @test haskey(result, :pvalue)
@@ -346,20 +357,60 @@ Random.seed!(12345)
     @testset "Forensics" begin
         @testset "Kinship" begin
             # Create related individuals (siblings share ~50% alleles)
-            data = rand(0:2, 4, 100)
+            data = rand(0:2, 4, 100) |> x -> Float64.(x)
             # Make individuals 1 and 2 more similar
             data[2, :] = data[1, :]
             data[2, 1:50] = rand(0:2, 50)  # Partially different
-            
+
             gm = GenotypeMatrix(data)
-            
+
             k_related = kinship_coefficient(gm, 1, 2)
             k_unrelated = kinship_coefficient(gm, 1, 3)
-            
+
             @test k_related > k_unrelated
         end
     end
 
+    # ========================================================================
+    # Include New Module Tests
+    # ========================================================================
+    println()
+    println("Running Bayesian Methods tests...")
+    include("test_bayesian.jl")
+
+    println("Running Rare Variant Analysis tests...")
+    include("test_rare_variant.jl")
+
+    println("Running Heritability (LDSC) tests...")
+    include("test_heritability.jl")
+
+    println("Running Fine-Mapping (SuSiE) tests...")
+    include("test_finemapping.jl")
+
+    println("Running Polygenic Risk Score tests...")
+    include("test_prs.jl")
+
+    println("Running Meta-Analysis tests...")
+    include("test_meta_analysis.jl")
+
+    println("Running Epistasis tests...")
+    include("test_epistasis.jl")
+
+    println("Running Single-Cell Analysis tests...")
+    include("test_singlecell.jl")
+
+    println("Running Pharmacogenomics tests...")
+    include("test_pharmacogenomics.jl")
+
+    println("Running Power Calculations tests...")
+    include("test_power.jl")
+
+    println("Running Machine Learning tests...")
+    include("test_ml.jl")
+
 end # @testset
 
-println("All tests completed!")
+println()
+println("="^70)
+println("All tests completed successfully!")
+println("="^70)

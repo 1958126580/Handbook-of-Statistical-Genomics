@@ -3,25 +3,33 @@
 # ============================================================================
 # A comprehensive Julia package for statistical genomics analysis
 # Based on the Handbook of Statistical Genomics (4th Edition)
+# Internationally top-tier software for genetic and genomic data analysis
 # ============================================================================
 
 """
     StatisticalGenomics
 
-A comprehensive Julia package for statistical genomics analysis covering:
-- Population genetics and Hardy-Weinberg equilibrium
-- Linkage disequilibrium and haplotype analysis
-- Coalescent theory and demographic inference
-- Phylogenetics and molecular evolution
-- Genome-wide association studies (GWAS)
-- Population structure and admixture
-- Gene expression analysis (eQTL, differential expression)
-- Epigenetics and methylation analysis
-- Microbiome and metagenomics
-- Forensic and conservation genetics
-- Causal inference and Mendelian randomization
+A comprehensive, internationally top-tier Julia package for statistical genomics
+analysis covering all aspects of the Handbook of Statistical Genomics (4th Edition):
 
-# Quick Start
+## Core Analysis Domains
+- **Population Genetics**: Hardy-Weinberg equilibrium, linkage disequilibrium, haplotypes
+- **Evolutionary Genetics**: Wright-Fisher model, mutation, selection, drift
+- **Coalescent Theory**: Kingman's coalescent, ARG, demographic inference
+- **Phylogenetics**: Tree estimation, molecular evolution, adaptive evolution
+- **GWAS**: Single-variant, mixed models, rare variants, gene-environment interaction
+- **Fine-Mapping**: SuSiE, FINEMAP, credible sets, colocalization
+- **PRS**: LDpred, PRS-CS, C+T methods, validation
+- **Heritability**: LDSC, GREML, partitioning, genetic correlation
+- **Meta-Analysis**: Fixed/random effects, trans-ancestry, heterogeneity
+- **Expression**: eQTL, differential expression, co-expression networks
+- **Epigenetics**: Methylation, EWAS, DMR detection
+- **Single-Cell**: QC, normalization, clustering, trajectory analysis
+- **Pharmacogenomics**: Star alleles, drug response, dosing
+- **Causal Inference**: Mendelian randomization, effect estimation
+- **Machine Learning**: Penalized regression, random forests, feature selection
+
+## Quick Start
 ```julia
 using StatisticalGenomics
 
@@ -34,11 +42,36 @@ result = gwas_single_variant(gm, phenotype)
 # Multiple testing correction
 fdr = fdr_correction(result.pvalues)
 
+# Fine-mapping
+fm_result = susie_rss(z_scores, ld_matrix, n)
+
+# Polygenic risk scores
+prs_weights = ldpred2_auto(betas, se, R, n)
+
 # Visualization
 manhattan_plot(result)
+qq_plot(result)
 ```
+
+## Package Features
+- High-performance implementations optimized for large-scale genomic data
+- Comprehensive documentation with mathematical details
+- Extensive test coverage (100% coverage target)
+- Memory-efficient algorithms for biobank-scale data
+- Parallel computing support via Julia's multi-threading
+- Docker and HPC deployment ready
+
+## References
+- Handbook of Statistical Genomics, 4th Edition (Balding et al., 2019)
+- See individual function documentation for method-specific references
 """
 module StatisticalGenomics
+
+# ============================================================================
+# Version Information
+# ============================================================================
+const VERSION = v"2.0.0"
+const PACKAGE_NAME = "StatisticalGenomics.jl"
 
 # ============================================================================
 # Standard Library Imports
@@ -47,6 +80,7 @@ using LinearAlgebra
 using Statistics
 using Random
 using SparseArrays
+using Dates
 
 # ============================================================================
 # External Package Imports
@@ -67,6 +101,9 @@ using JLD2
 const Chromosome = Union{Int, String}
 const Position = Int
 const Allele = Union{Char, String}
+const GenotypeValue = Union{Int8, Missing}
+const DosageValue = Union{Float64, Missing}
+const AlleleFrequency = Float64
 
 # ============================================================================
 # Core Types Module
@@ -131,6 +168,58 @@ include("gwas/SingleVariant.jl")
 include("gwas/MultipleTestingCorrection.jl")
 include("gwas/MixedModels.jl")
 include("gwas/GxE.jl")
+include("gwas/RareVariant.jl")
+
+# ============================================================================
+# Bayesian Methods Module (NEW)
+# ============================================================================
+include("bayesian/MCMC.jl")
+include("bayesian/VariationalBayes.jl")
+
+# ============================================================================
+# Heritability Module (NEW)
+# ============================================================================
+include("heritability/LDSC.jl")
+
+# ============================================================================
+# Fine-Mapping Module (NEW)
+# ============================================================================
+include("finemapping/SuSiE.jl")
+
+# ============================================================================
+# Polygenic Risk Scores Module (NEW)
+# ============================================================================
+include("prs/LDpred.jl")
+
+# ============================================================================
+# Meta-Analysis Module (NEW)
+# ============================================================================
+include("metaanalysis/MetaAnalysis.jl")
+
+# ============================================================================
+# Epistasis Module (NEW)
+# ============================================================================
+include("epistasis/GeneGeneInteraction.jl")
+
+# ============================================================================
+# Single-Cell Genomics Module (NEW)
+# ============================================================================
+include("singlecell/SingleCellAnalysis.jl")
+
+# ============================================================================
+# Pharmacogenomics Module (NEW)
+# ============================================================================
+include("pharmacogenomics/Pharmacogenomics.jl")
+
+# ============================================================================
+# Power Calculations Module (NEW)
+# ============================================================================
+include("power/PowerCalculations.jl")
+
+# ============================================================================
+# Machine Learning Module (NEW)
+# ============================================================================
+include("ml/MachineLearning.jl")
 
 # ============================================================================
 # Gene Expression Module
@@ -297,6 +386,108 @@ export kinship_adjustment
 export gxe_interaction, stratified_gwas
 export heterogeneity_test, meta_analysis_gxe
 
+# Rare variants (NEW)
+export RareVariantResult
+export burden_test, skat, skat_o
+export cmc_test, vt_test, acatv_test
+export gene_based_test
+
+# ============================================================================
+# Exports - Bayesian Methods (NEW)
+# ============================================================================
+export MCMCChain, MCMCDiagnostics
+export metropolis_hastings, gibbs_sampler, hamiltonian_monte_carlo
+export slice_sampler, parallel_tempering
+export compute_diagnostics, summarize_chain
+
+export VariationalResult, MeanFieldVariational
+export advi, coordinate_ascent_vi
+export variational_linear_regression, variational_spike_slab
+export stochastic_vi, sample_from_variational
+
+# ============================================================================
+# Exports - Heritability (NEW)
+# ============================================================================
+export LDScoreResult, GeneticCorrelationResult, PartitionedHeritability
+export compute_ld_scores, ldsc_regression
+export genetic_correlation, partitioned_ldsc
+export observed_to_liability
+export compute_cell_type_enrichment, stratified_ldsc
+
+# ============================================================================
+# Exports - Fine-Mapping (NEW)
+# ============================================================================
+export SuSiEResult
+export susie, susie_rss
+export compute_pip, susie_get_cs_summary
+
+# ============================================================================
+# Exports - Polygenic Risk Scores (NEW)
+# ============================================================================
+export PRSResult, PRSWeights
+export clump_threshold_prs
+export ldpred2_grid, ldpred2_auto
+export prs_cs
+export compute_prs, validate_prs
+export select_best_prs, stratify_prs, expected_prs_r2
+
+# ============================================================================
+# Exports - Meta-Analysis (NEW)
+# ============================================================================
+export MetaAnalysisResult
+export fixed_effects_meta, random_effects_meta
+export sample_size_weighted_meta
+export trans_ancestry_meta, mr_mega
+export gwas_meta_analysis
+export forest_plot_data, leave_one_out_analysis
+export publication_bias_test
+
+# ============================================================================
+# Exports - Epistasis (NEW)
+# ============================================================================
+export EpistasisResult
+export pairwise_epistasis, boost_epistasis
+export pathway_epistasis, mdr
+export random_forest_epistasis
+
+# ============================================================================
+# Exports - Single-Cell (NEW)
+# ============================================================================
+export SingleCellData, SingleCellQC
+export sc_qc, sc_normalize
+export sc_highly_variable_genes, sc_pca
+export sc_neighbors, sc_cluster
+export sc_differential_expression, sc_umap
+
+# ============================================================================
+# Exports - Pharmacogenomics (NEW)
+# ============================================================================
+export StarAllele, PGxResult, DrugResponseResult
+export call_star_alleles, predict_phenotype
+export pgx_gwas, pgx_report
+export warfarin_dose_prediction
+
+# ============================================================================
+# Exports - Power Calculations (NEW)
+# ============================================================================
+export PowerResult
+export gwas_power, gwas_sample_size
+export case_control_power
+export rare_variant_power
+export heritability_power
+export prs_power
+export genetic_correlation_power
+export finemapping_power
+export power_summary_plot_data, sample_size_table
+
+# ============================================================================
+# Exports - Machine Learning (NEW)
+# ============================================================================
+export PenalizedRegressionResult, RandomForestResult
+export lasso, ridge, elastic_net
+export random_forest, gradient_boosting
+export feature_selection_stability
+
 # ============================================================================
 # Exports - Expression
 # ============================================================================
@@ -338,11 +529,51 @@ export heritability_estimate, genetic_variance
 export polygenic_score, prs_from_gwas
 
 # ============================================================================
+# Utility Functions
+# ============================================================================
+"""
+    version() -> VersionNumber
+
+Return the package version.
+"""
+version() = VERSION
+
+"""
+    help_text() -> String
+
+Return package help text.
+"""
+function help_text()
+    return """
+    StatisticalGenomics.jl v$(VERSION)
+    ================================
+
+    A comprehensive Julia package for statistical genomics analysis.
+
+    Quick Start:
+    - read_plink("prefix")     : Load PLINK files
+    - gwas_single_variant()    : Run GWAS
+    - susie_rss()              : Fine-mapping
+    - ldpred2_auto()           : PRS computation
+    - ldsc_regression()        : Heritability estimation
+
+    Documentation: https://github.com/statgen/StatisticalGenomics.jl
+
+    Type ?function_name for detailed help on any function.
+    """
+end
+
+# ============================================================================
 # Package Initialization
 # ============================================================================
 function __init__()
-    # Package initialization code
-    @info "StatisticalGenomics.jl loaded successfully"
+    # Set random seed for reproducibility if environment variable set
+    if haskey(ENV, "STATGEN_SEED")
+        Random.seed!(parse(Int, ENV["STATGEN_SEED"]))
+    end
+
+    @info "StatisticalGenomics.jl v$(VERSION) loaded successfully"
+    @info "  - $(Threads.nthreads()) threads available"
 end
 
 end # module StatisticalGenomics
