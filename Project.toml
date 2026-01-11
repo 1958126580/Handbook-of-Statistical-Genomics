@@ -1,0 +1,65 @@
+# StatisticalGenomics.jl Package
+#
+# A comprehensive Julia package for statistical genomics analysis
+# Based on the Handbook of Statistical Genomics, 4th Edition
+#
+# This package provides implementations of:
+# - Population genetics fundamentals
+# - Coalescent theory and phylogenetics  
+# - Genome-wide association studies (GWAS)
+# - Gene expression analysis
+# - Epigenetics and methylation analysis
+# - Microbiome analysis
+# - Forensic genetics
+# - Causal inference methods
+
+name = "StatisticalGenomics"
+uuid = "f8e7a1c2-3b4d-5e6f-7890-abcdef123456"
+authors = ["Statistical Genomics Team"]
+version = "1.0.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MultivariateStats = "6f286f6a-111f-5878-ab1e-185364 voices"
+NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
+
+[compat]
+julia = "1.10"
+CSV = "0.10"
+Clustering = "0.15"
+DataFrames = "1.6"
+Distributions = "0.25"
+FFTW = "1.8"
+ForwardDiff = "0.10"
+HypothesisTests = "0.11"
+JLD2 = "0.4"
+MultivariateStats = "0.10"
+NLopt = "1.0"
+Optim = "1.9"
+Plots = "1.40"
+ProgressMeter = "1.10"
+SpecialFunctions = "2.4"
+StatsBase = "0.34"
+StatsPlots = "0.15"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
